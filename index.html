@@ -2,337 +2,510 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>The Backrooms - Found Footage</title>
+    <title>Backrooms Escape - Endless</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
-        canvas { display: block; width: 100%; height: 100%; }
-        #instructions {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: #eec; font-family: 'Courier New', Courier, monospace; 
-            text-align: center; pointer-events: none;
-            background: rgba(20, 20, 10, 0.8); padding: 30px; border: 1px solid #775;
-            text-transform: uppercase; letter-spacing: 2px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        body { margin: 0; overflow: hidden; background-color: #000; color: white; font-family: 'Courier New', Courier, monospace; }
+        
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; z-index: 10; }
+        #info { padding: 20px; text-shadow: 1px 1px 2px black; font-size: 14px; color: #ddd; }
+        
+        #crosshair { 
+            position: absolute; top: 50%; left: 50%; 
+            width: 8px; height: 8px; 
+            background-color: rgba(200, 50, 50, 0.8);
+            border-radius: 50%; 
+            transform: translate(-50%, -50%);
+            display: none;
+            box-shadow: 0 0 5px red;
         }
-        h1 { font-size: 24px; text-shadow: 2px 2px 0 #000; margin-bottom: 20px; color: #ffeb3b; }
-        p { font-size: 14px; color: #bbb; line-height: 1.6; }
-        .key { color: #fff; font-weight: bold; }
+        
+        #menu-screen {
+            position: absolute; width: 100%; height: 100%;
+            background-color: rgba(10, 5, 5, 0.6);
+            backdrop-filter: blur(2px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 999; pointer-events: auto;
+            text-align: center;
+            transition: opacity 0.3s;
+        }
+
+        h1 {
+            font-size: 60px; color: #a00; text-shadow: 4px 4px 0px #000, 0 0 20px #f00;
+            letter-spacing: 5px; margin-bottom: 30px; border-bottom: 2px solid #500; padding-bottom: 10px;
+        }
+
+        .view-select-container { margin-bottom: 40px; }
+        .view-label { font-size: 18px; color: #aaa; margin-bottom: 15px; letter-spacing: 2px; text-shadow: 1px 1px 0 #000; }
+        .view-buttons { display: flex; gap: 15px; }
+        .btn-view {
+            background: rgba(0,0,0,0.7); border: 1px solid #444; color: #888;
+            padding: 10px 20px; cursor: pointer; font-family: inherit; font-size: 16px; transition: all 0.2s;
+        }
+        .btn-view:hover { border-color: #800; color: #fff; }
+        .btn-view.active {
+            background-color: #700; color: #fff; border-color: #f00; box-shadow: 0 0 10px #500; font-weight: bold;
+        }
+
+        .action-buttons { display: flex; flex-direction: column; gap: 20px; min-width: 300px; }
+        .btn-main {
+            font-size: 24px; padding: 15px 40px; background-color: rgba(0,0,0,0.5); border: 2px solid #a00; color: #a00;
+            cursor: pointer; font-family: inherit; text-transform: uppercase; letter-spacing: 3px; transition: all 0.2s;
+        }
+        .btn-main:hover { background-color: #a00; color: #000; box-shadow: 0 0 20px #f00; }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { text-shadow: 0 0 5px #a00; } 50% { text-shadow: 0 0 20px #f00; } 100% { text-shadow: 0 0 5px #a00; } }
+        .hidden { display: none !important; }
+
+        #game-over { 
+            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            font-size: 100px; color: #f00; font-weight: bold; text-shadow: 0 0 20px #000;
+            font-family: 'Chiller', 'Courier New', serif; z-index: 200; pointer-events: none;
+        }
+        
+        /* デバッグ情報 (座標) */
+        #coord-info {
+            display: none; position: absolute; top: 10px; left: 10px;
+            color: white; font-family: monospace; font-size: 16px; 
+            background: rgba(0,0,0,0.5); padding: 5px; pointer-events: none;
+        }
+        /* デバッグ情報 (当たり判定ステータス) */
+        #hitbox-status {
+            display: none; position: absolute; bottom: 10px; left: 10px;
+            color: lime; font-family: monospace; font-size: 12px; pointer-events: none;
+        }
     </style>
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.154.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.154.0/examples/jsm/"
+            }
+        }
+    </script>
 </head>
 <body>
-    <div id="instructions">
+    <div id="menu-screen">
         <h1>THE BACKROOMS</h1>
-        <p>VHS RECORDING - SEP 23 1996</p>
-        <p>----------------------------</p>
-        <p><span class="key">S</span> : Forward (前進)</p>
-        <p><span class="key">W</span> : Backward (後退)</p>
-        <p><span class="key">Mouse</span> : Look</p>
-        <p>----------------------------</p>
-        <p>CLICK TO PLAY</p>
+        <div class="view-select-container">
+            <div class="view-label">- SELECT VIEWPOINT -</div>
+            <div class="view-buttons">
+                <button class="btn-view" data-mode="2">1ST PERSON</button>
+                <button class="btn-view active" data-mode="0">3RD PERSON (REAR)</button>
+                <button class="btn-view" data-mode="1">3RD PERSON (FRONT)</button>
+            </div>
+        </div>
+        <div class="action-buttons">
+            <button id="btn-start" class="btn-main pulse">ENTER THE ROOM</button>
+            <button id="btn-resume" class="btn-main hidden">RESUME</button>
+            <button id="btn-reset" class="btn-main hidden">RESET GAME</button>
+        </div>
+        <p style="margin-top:30px; color:#ccc; font-size:12px; text-shadow: 1px 1px 1px black;">
+            WASD: Move / Mouse: Look / F5: Change View / Esc: Pause<br>
+            <span style="color:#888">Debug: F3 (Coords) / F3+B (Hitboxes)</span>
+        </p>
     </div>
-    <canvas id="glslCanvas"></canvas>
 
-    <script type="text/javascript" src="https://rawgit.com/patriciogonzalezvivo/glslCanvas/master/dist/GlslCanvas.js"></script>
+    <!-- 座標表示 -->
+    <div id="coord-info">XYZ: 0.00 / 0.00 / 0.00</div>
 
-    <script>
-        const canvas = document.getElementById('glslCanvas');
-        const sandbox = new GlslCanvas(canvas);
-        const instr = document.getElementById('instructions');
+    <div id="ui-layer">
+        <div id="info" style="text-align: right; width: auto; right: 10px; left: auto;">
+            Status: <span id="status">Loading Models...</span><br>
+            Mode: <span id="view-mode-text">TPS (Rear)</span>
+        </div>
+        <div id="hitbox-status">[Hitboxes: ON]</div>
+    </div>
+    <div id="crosshair"></div>
+    <div id="game-over">CAUGHT</div>
 
-        const fragShader = `
-#ifdef GL_ES
-precision highp float;
-#endif
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-uniform vec2 u_resolution;
-uniform float u_time;
-uniform vec3 u_camPos;
-uniform vec2 u_camRot;
-
-#define R u_resolution
-#define T u_time
-
-// --- Noise Functions ---
-float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
-
-float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    float a = hash(i);
-    float b = hash(i + vec2(1.0, 0.0));
-    float c = hash(i + vec2(0.0, 1.0));
-    float d = hash(i + vec2(1.0, 1.0));
-    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-}
-
-float fbm(vec2 p) {
-    float v = 0.0;
-    float a = 0.5;
-    for (int i=0; i<4; i++) {
-        v += noise(p) * a;
-        p *= 2.0;
-        a *= 0.5;
-    }
-    return v;
-}
-
-// --- Scene Mapping ---
-float map(vec3 p) {
-    // 部屋の高さ (2.8m)
-    float floorDist = p.y; 
-    float ceilDist = 2.8 - p.y; 
-    
-    // 無限の壁生成
-    float spacing = 6.0; // 少し広めの廊下
-    vec3 q = p;
-    vec2 id = floor(q.xz / spacing);
-    q.xz = mod(q.xz, spacing) - spacing * 0.5;
-    
-    // ランダムな壁の配置パターン
-    float h = hash(id);
-    float thick = 0.2; 
-    float dWall = 100.0;
-    
-    vec3 b = q;
-    // 多様な壁のパターン
-    if (h < 0.2) {
-        // 角柱
-        dWall = length(max(abs(b) - vec3(1.0, 2.0, 1.0), 0.0));
-    } else if (h < 0.5) {
-        // 横壁
-        dWall = length(max(abs(b) - vec3(spacing*0.6, 2.0, thick), 0.0));
-    } else if (h < 0.8) {
-        // 縦壁
-        dWall = length(max(abs(b) - vec3(thick, 2.0, spacing*0.6), 0.0));
-    }
-    
-    // 巾木 (Baseboard) - 床近くを少し膨らませる
-    float baseboard = (p.y < 0.25 && p.y > 0.0) ? dWall - 0.08 : dWall;
-    
-    return min(min(floorDist, ceilDist), baseboard);
-}
-
-vec3 getNormal(vec3 p) {
-    vec2 e = vec2(0.005, 0.0);
-    return normalize(vec3(
-        map(p + e.xyy) - map(p - e.xyy),
-        map(p + e.yxy) - map(p - e.yxy),
-        map(p + e.yyx) - map(p - e.yyx)
-    ));
-}
-
-void main() {
-    // レンズ歪み（魚眼効果）
-    vec2 uv = (gl_FragCoord.xy * 2.0 - R) / R.y;
-    float r2 = dot(uv, uv);
-    uv *= 1.0 + 0.15 * r2; // 歪みを加える
-    
-    vec3 ro = u_camPos; 
-    vec3 rd = normalize(vec3(uv, 1.2)); // FOV狭めで閉塞感を出す
-
-    // カメラ回転
-    float pitch = u_camRot.y;
-    float yaw = u_camRot.x;
-    mat2 rotX = mat2(cos(pitch), -sin(pitch), sin(pitch), cos(pitch));
-    mat2 rotY = mat2(cos(yaw), -sin(yaw), sin(yaw), cos(yaw));
-    rd.yz *= rotX;
-    rd.xz *= rotY;
-    
-    // レイマーチング
-    float t = 0.0;
-    float d = 0.0;
-    for(int i = 0; i < 100; i++) {
-        vec3 p = ro + rd * t;
-        d = map(p);
-        if(d < 0.001 || t > 35.0) break;
-        t += d;
-    }
-    
-    vec3 col = vec3(0.0);
-    
-    if(t < 35.0) {
-        vec3 p = ro + rd * t;
-        vec3 n = getNormal(p);
+        // --- 設定 ---
+        const PLAYER_SPEED = 0.08;
+        const ENEMY_SPEED = 0.055;
+        const MOUSE_SENSITIVITY = 0.002;
+        const CHUNK_SIZE = 41.0; 
         
-        // --- マテリアル ---
+        // --- 視点設定 ---
+        let viewMode = 0; 
+        const VIEW_CONFIG = [
+            { name: "TPS (Rear)",  dist: 1.9, height: 1.8, offsetAngle: Math.PI },
+            { name: "TPS (Front)", dist: 2.5, height: 1.8, offsetAngle: 0 },
+            { name: "FPS",         dist: 0.1, height: 1.7, offsetAngle: Math.PI } 
+        ];
+
+        let isGameActive = false;
+        let hasGameStarted = false;
+        let isGameOver = false;
+
+        // --- デバッグフラグ ---
+        let showHitboxes = false; // 当たり判定表示
+        let showCoords = false;   // 座標表示
+        let f3ActionConsumed = false; // F3+Bなどを押したときにF3単体の動作をキャンセルするフラグ
+
+        let playerBoxHelper, enemyBoxHelper; 
+
+        const menuScreen = document.getElementById('menu-screen');
+        const btnStart = document.getElementById('btn-start');
+        const btnResume = document.getElementById('btn-resume');
+        const btnReset = document.getElementById('btn-reset');
+        const viewButtons = document.querySelectorAll('.btn-view');
+        const crosshair = document.getElementById('crosshair');
+        const gameOverScreen = document.getElementById('game-over');
+        const statusText = document.getElementById('status');
         
-        // 1. 床 (Damp Carpet)
-        if (p.y < 0.01) {
-            float n1 = fbm(p.xz * 6.0);
-            float n2 = fbm(p.xz * 30.0);
-            // 湿った茶色っぽい黄色
-            col = vec3(0.55, 0.5, 0.25); 
-            col *= 0.5 + 0.5 * n1; // 大きなムラ
-            col *= 0.8 + 0.3 * n2; // 細かい繊維
-            // シミ汚れ
-            float stain = smoothstep(0.4, 0.7, noise(p.xz * 0.8));
-            col *= 1.0 - stain * 0.4;
-        } 
-        // 2. 天井 (Acoustic Tiles)
-        else if (p.y > 2.79) {
-            vec2 tile = fract(p.xz * 0.5) - 0.5;
-            float grid = smoothstep(0.47, 0.49, max(abs(tile.x), abs(tile.y)));
-            col = vec3(0.8, 0.8, 0.75) * (1.0 - grid * 0.3);
-            col *= 0.8 + 0.1 * noise(p.xz * 20.0);
+        const coordInfo = document.getElementById('coord-info');
+        const hitboxStatus = document.getElementById('hitbox-status');
+
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x1a1a0d, 0.05);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffddaa, 0.4);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1, 15);
+        scene.add(pointLight);
+
+        let player, enemy;
+        let mixerPlayer, mixerEnemy;
+        let mapTemplate = null;
+        const loadedChunks = {};
+        
+        const clock = new THREE.Clock();
+        const keys = { w: false, a: false, s: false, d: false, f3: false }; 
+        let cameraPitch = 0.0;
+
+        // UI Events
+        viewButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                viewButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                viewMode = parseInt(btn.getAttribute('data-mode'));
+                document.getElementById('view-mode-text').innerText = VIEW_CONFIG[viewMode].name;
+            });
+        });
+
+        function requestGameLock() { document.body.requestPointerLock(); }
+        btnStart.addEventListener('click', requestGameLock);
+        btnResume.addEventListener('click', requestGameLock);
+        btnReset.addEventListener('click', () => { resetGame(); requestGameLock(); });
+
+        function resetGame() {
+            isGameOver = false;
+            gameOverScreen.style.display = 'none';
+            statusText.innerText = "Running";
+            if (player) { player.position.set(0, 0, 0); player.rotation.set(0, 0, 0); }
+            if (enemy) { enemy.position.set(0, 0, 15); }
+            cameraPitch = 0;
             
-            // 蛍光灯
-            vec2 id = floor(p.xz * 0.5);
-            if (hash(id) > 0.85) {
-                // 不規則なフリッカー
-                float blink = smoothstep(0.2, 0.8, noise(vec2(T * 15.0, hash(id))));
-                // たまに消えかける
-                float broken = step(0.02, hash(id + vec2(1.0)));
-                col += vec3(2.0, 1.9, 1.6) * (0.8 + 0.2 * blink) * broken;
-            }
-        } 
-        // 3. 壁 (The Mono-Yellow)
-        else {
-            // 壁紙のパターン（縦縞のようなノイズ）
-            float pat = noise(vec2(p.x * 10.0, p.y * 4.0));
-            pat += noise(vec2(p.z * 10.0, p.y * 4.0));
-            // あの特有の黄色
-            col = vec3(0.85, 0.75, 0.45); 
-            col += (pat - 0.5) * 0.08;
-            
-            // 巾木の色
-            if (p.y < 0.25) col = vec3(0.35, 0.25, 0.15);
+            // マップ全消去 (Helper含む)
+            Object.values(loadedChunks).forEach(chunk => {
+                if (chunk.userData.debugHelper) scene.remove(chunk.userData.debugHelper);
+                scene.remove(chunk);
+            });
+            for (const key in loadedChunks) delete loadedChunks[key];
         }
-        
-        // --- ライティング ---
-        // アンビエントオクルージョン風の影
-        float corner = smoothstep(0.0, 0.8, p.y) * smoothstep(2.8, 2.0, p.y);
-        // ポイントライト（カメラ位置付近からの光）
-        float light = 1.0 / (1.0 + t * t * 0.08);
-        
-        col *= corner * 0.7 + 0.3; // 全体的に薄暗く
-        col += col * light * 0.5; // フラッシュライト効果
 
-        // 距離フォグ (黄色い闇)
-        vec3 fogCol = vec3(0.7, 0.6, 0.35);
-        col = mix(col, fogCol, 1.0 - exp(-t * 0.15));
-        
-    } else {
-        col = vec3(0.7, 0.6, 0.35); // 遠景色
-    }
-    
-    // --- VHS Post Processing ---
-    
-    // 1. 色収差 (Chromatic Aberration)
-    // レンズの端ほど色がずれる
-    float ca = length(uv) * 0.02;
-    col.r += 0.02 * hash(vec2(uv.y, T)); // 赤チャンネルに少しノイズ
-    col.b = mix(col.b, col.g, 0.5); // 青を少し劣化させる
-    
-    // 2. フィルムグレイン
-    float grain = hash(uv * 2.0 + mod(T, 10.0));
-    col *= 0.9 + 0.2 * grain;
-    
-    // 3. ビネット (四隅を暗く)
-    col *= smoothstep(1.5, 0.6, length(uv));
-    
-    // 4. ガンマとコントラスト (ビデオテープ風)
-    col = pow(col, vec3(0.6)); // ガンマ
-    col = (col - 0.5) * 1.1 + 0.5; // コントラスト強調
-
-    gl_FragColor = vec4(col, 1.0);
-}
-        `;
-
-        sandbox.load(fragShader);
-        
-        // 初期位置
-        let camPos = { x: 0.5, y: 1.6, z: 0.5 };
-        let camRot = { x: 0, y: 0 };
-        // 歩行アニメーション用
-        let walkTime = 0; 
-        const keys = {};
-
-        canvas.onclick = () => canvas.requestPointerLock();
         document.addEventListener('pointerlockchange', () => {
-            instr.style.display = (document.pointerLockElement === canvas) ? 'none' : 'block';
-        });
-
-        window.addEventListener('keydown', e => keys[e.code] = true);
-        window.addEventListener('keyup', e => keys[e.code] = false);
-
-        window.addEventListener('mousemove', e => {
-            if (document.pointerLockElement === canvas) {
-                // 右移動で右を向く (Standard) => X座標をマイナスで回す
-                camRot.x -= e.movementX * 0.003; 
-                
-                // 上移動で上を向く (Standard) => Y座標（Pitch）を足す
-                // (GLSLの回転行列と座標系に合わせると、通常 e.movementY は下移動がプラスなので
-                //  上移動はマイナス。上を向くにはPitchを減らす必要がある場合と増やす場合がある。
-                //  前回の成功例に基づき調整)
-                camRot.y += e.movementY * 0.003; 
-                
-                camRot.y = Math.max(-1.4, Math.min(1.4, camRot.y));
-            }
-        });
-
-        function loop() {
-            const speed = 0.07; 
-
-            if (document.pointerLockElement === canvas) {
-                const yaw = camRot.x;
-                const fwdX = Math.sin(yaw);
-                const fwdZ = -Math.cos(yaw);
-                const rightX = Math.cos(yaw);
-                const rightZ = Math.sin(yaw);
-                
-                let moving = false;
-
-                // --- 指定された操作設定 ---
-                // S: 前進 (Forward)
-                if (keys['KeyS']) { 
-                    camPos.x += fwdX * speed; 
-                    camPos.z += fwdZ * speed; 
-                    moving = true;
-                }
-                // W: 後退 (Backward)
-                if (keys['KeyW']) { 
-                    camPos.x -= fwdX * speed; 
-                    camPos.z -= fwdZ * speed; 
-                    moving = true;
-                }
-                
-                // A: 左 (Left) / D: 右 (Right)
-                if (keys['KeyA']) { 
-                    camPos.x -= rightX * speed; 
-                    camPos.z -= rightZ * speed; 
-                    moving = true;
-                }
-                if (keys['KeyD']) { 
-                    camPos.x += rightX * speed; 
-                    camPos.z += rightZ * speed; 
-                    moving = true;
-                }
-                
-                // カメラの手ブレ（Head Bobbing）
-                // 歩いている時だけ視点を上下左右に揺らす
-                if (moving) {
-                    walkTime += 0.15;
-                    // Y軸の揺れ（足音）
-                    camPos.y = 1.6 + Math.sin(walkTime * 2.0) * 0.05;
-                    // X軸の揺れ（体のひねり）をカメラ回転に加算したいが、JSではPositionのみ揺らす
-                    // 簡易的に横にも少し揺らす
-                    let sway = Math.cos(walkTime) * 0.02;
-                    // Note: 本当はRotに加算したいが、Uniformを汚さないようPositionで微調整
+            if (document.pointerLockElement === document.body) {
+                isGameActive = true;
+                if (!hasGameStarted) hasGameStarted = true;
+                menuScreen.style.opacity = '0';
+                setTimeout(() => { if(isGameActive) menuScreen.style.display = 'none'; }, 300);
+                crosshair.style.display = 'block';
+            } else {
+                isGameActive = false;
+                menuScreen.style.display = 'flex';
+                requestAnimationFrame(() => { menuScreen.style.opacity = '1'; });
+                crosshair.style.display = 'none';
+                if (hasGameStarted) {
+                    btnStart.classList.add('hidden');
+                    btnResume.classList.remove('hidden');
+                    btnReset.classList.remove('hidden');
                 } else {
-                    // 止まったらゆっくり元の高さに戻る
-                    camPos.y += (1.6 - camPos.y) * 0.1;
+                    btnStart.classList.remove('hidden');
+                    btnResume.classList.add('hidden');
+                    btnReset.classList.add('hidden');
                 }
             }
+        });
 
-            sandbox.setUniform('u_camPos', camPos.x, camPos.y, camPos.z);
-            sandbox.setUniform('u_camRot', camRot.x, camRot.y);
+        document.body.addEventListener('mousemove', (event) => {
+            if (!isGameActive || !player || isGameOver) return;
+            player.rotation.y -= event.movementX * MOUSE_SENSITIVITY;
+            cameraPitch += event.movementY * MOUSE_SENSITIVITY;
+            const limit = Math.PI / 2 - 0.1;
+            cameraPitch = Math.max(-limit, Math.min(limit, cameraPitch));
+        });
 
-            requestAnimationFrame(loop);
+        // --- ★ キーボード入力処理 (F3 / F3+B トグル実装) ---
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'F3') {
+                e.preventDefault();
+                keys['f3'] = true;
+            }
+
+            // F3+B: Hitbox Toggle
+            if ((e.key === 'b' || e.key === 'B') && keys['f3']) {
+                toggleHitboxes();
+                f3ActionConsumed = true; // F3単体の動作をキャンセル
+            }
+
+            if (e.key === 'F5') {
+                e.preventDefault();
+                viewMode = (viewMode + 1) % 3;
+                document.getElementById('view-mode-text').innerText = VIEW_CONFIG[viewMode].name;
+                viewButtons.forEach(b => b.classList.remove('active'));
+                const targetBtn = document.querySelector(`.btn-view[data-mode="${viewMode}"]`);
+                if(targetBtn) targetBtn.classList.add('active');
+                return;
+            }
+            keys[e.key.toLowerCase()] = true;
+        });
+
+        window.addEventListener('keyup', (e) => { 
+            if (e.key === 'F3') {
+                // F3+Bなどが押されていなかった場合のみ、座標表示をトグル
+                if (!f3ActionConsumed) {
+                    toggleCoordinates();
+                }
+                keys['f3'] = false;
+                f3ActionConsumed = false; // リセット
+            }
+            keys[e.key.toLowerCase()] = false; 
+        });
+
+        // --- デバッグ機能切り替え ---
+        function toggleHitboxes() {
+            showHitboxes = !showHitboxes;
+            hitboxStatus.style.display = showHitboxes ? 'block' : 'none';
+            console.log("Hitboxes:", showHitboxes ? "ON" : "OFF");
+
+            if (showHitboxes) {
+                // 有効化: Helper作成
+                if (player) {
+                    playerBoxHelper = new THREE.BoxHelper(player, 0xffff00);
+                    scene.add(playerBoxHelper);
+                }
+                if (enemy) {
+                    enemyBoxHelper = new THREE.BoxHelper(enemy, 0xff0000);
+                    scene.add(enemyBoxHelper);
+                }
+                for (const key in loadedChunks) {
+                    const chunk = loadedChunks[key];
+                    if (!chunk.userData.debugHelper) {
+                        const helper = new THREE.BoxHelper(chunk, 0x00ff00);
+                        scene.add(helper);
+                        chunk.userData.debugHelper = helper;
+                    }
+                }
+            } else {
+                // 無効化: 全Helper削除
+                if (playerBoxHelper) { scene.remove(playerBoxHelper); playerBoxHelper = null; }
+                if (enemyBoxHelper) { scene.remove(enemyBoxHelper); enemyBoxHelper = null; }
+                for (const key in loadedChunks) {
+                    const chunk = loadedChunks[key];
+                    if (chunk.userData.debugHelper) {
+                        scene.remove(chunk.userData.debugHelper);
+                        chunk.userData.debugHelper = null;
+                    }
+                }
+            }
         }
 
-        loop();
+        function toggleCoordinates() {
+            showCoords = !showCoords;
+            coordInfo.style.display = showCoords ? 'block' : 'none';
+        }
 
+        // Loader
+        const loader = new GLTFLoader();
+
+        loader.load('3Dmodel/backrooms.glb', (gltf) => {
+            mapTemplate = gltf.scene;
+            mapTemplate.scale.set(1.3, 1.3, 1.3);
+            mapTemplate.traverse((child) => { if (child.isMesh) child.receiveShadow = true; });
+            updateMapChunks();
+        });
+
+        loader.load('3Dmodel/escape_the_backrooms_hazmat.glb', (gltf) => {
+            player = gltf.scene;
+            player.position.set(0, 0, 0);
+
+            if(gltf.animations.length > 0){
+                mixerPlayer = new THREE.AnimationMixer(player);
+                mixerPlayer.clipAction(gltf.animations[0]).play();
+            } else {
+                fixTPose(player);
+            }
+            
+            if (showHitboxes) {
+                playerBoxHelper = new THREE.BoxHelper(player, 0xffff00);
+                scene.add(playerBoxHelper);
+            }
+
+            scene.add(player);
+            checkLoadComplete();
+        });
+
+        loader.load('3Dmodel/bacteria_-_kane_pixels_backrooms.glb', (gltf) => {
+            enemy = gltf.scene;
+            enemy.scale.set(0.5, 0.5, 0.5); 
+            enemy.position.set(0, 0, 15);
+
+            enemy.traverse((child) => {
+                if (child.isMesh) child.material.color.set(0x000000);
+            });
+
+            if(gltf.animations.length > 0){
+                mixerEnemy = new THREE.AnimationMixer(enemy);
+                mixerEnemy.clipAction(gltf.animations[0]).play();
+            }
+            
+            if (showHitboxes) {
+                enemyBoxHelper = new THREE.BoxHelper(enemy, 0xff0000);
+                scene.add(enemyBoxHelper);
+            }
+
+            scene.add(enemy);
+            checkLoadComplete();
+        });
+
+        function checkLoadComplete() {
+            if (player && enemy) document.getElementById('status').innerText = "Ready to Run";
+        }
+
+        // Tポーズ修正
+        function fixTPose(model) {
+            model.traverse((child) => {
+                if (child.isBone) {
+                    const name = child.name; 
+                    if (name.includes('LeftArm_')) {
+                        child.rotation.set(0,0,0);
+                        child.rotation.x = 1.4; 
+                        child.rotation.z = 0.2; 
+                    }
+                    if (name.includes('RightArm_')) {
+                        child.rotation.set(0,0,0);
+                        child.rotation.x = 1.4; 
+                        child.rotation.z = -0.2;
+                    }
+                    if (name.includes('LeftForeArm_')) child.rotation.set(0,0,0); 
+                    if (name.includes('RightForeArm_')) child.rotation.set(0,0,0); 
+                }
+            });
+        }
+
+        function updateMapChunks() {
+            if (!player || !mapTemplate) return;
+            const pX = player.position.x;
+            const pZ = player.position.z;
+            const chunkX = Math.round(pX / CHUNK_SIZE);
+            const chunkZ = Math.round(pZ / CHUNK_SIZE);
+            const activeKeys = new Set();
+            for (let x = -1; x <= 1; x++) {
+                for (let z = -1; z <= 1; z++) {
+                    const cx = chunkX + x;
+                    const cz = chunkZ + z;
+                    const key = `${cx},${cz}`;
+                    activeKeys.add(key);
+                    if (!loadedChunks[key]) {
+                        const clone = mapTemplate.clone();
+                        clone.position.set(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE);
+                        
+                        if (showHitboxes) {
+                            const helper = new THREE.BoxHelper(clone, 0x00ff00);
+                            scene.add(helper);
+                            clone.userData.debugHelper = helper;
+                        }
+
+                        scene.add(clone);
+                        loadedChunks[key] = clone;
+                    }
+                }
+            }
+            for (const key in loadedChunks) {
+                if (!activeKeys.has(key)) {
+                    const chunk = loadedChunks[key];
+                    if (chunk.userData.debugHelper) {
+                        scene.remove(chunk.userData.debugHelper);
+                    }
+                    scene.remove(chunk);
+                    delete loadedChunks[key];
+                }
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            if (mixerPlayer && isGameActive) mixerPlayer.update(delta);
+            if (mixerEnemy && isGameActive) mixerEnemy.update(delta);
+
+            if (playerBoxHelper) playerBoxHelper.update();
+            if (enemyBoxHelper) enemyBoxHelper.update();
+
+            // ★ 座標情報の更新
+            if (showCoords && player) {
+                const x = player.position.x.toFixed(2);
+                const y = player.position.y.toFixed(2);
+                const z = player.position.z.toFixed(2);
+                coordInfo.innerText = `XYZ: ${x} / ${y} / ${z}`;
+            }
+
+            if (isGameOver) { renderer.render(scene, camera); return; }
+
+            if (player && isGameActive) {
+                const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
+                const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
+                if (keys.w) player.position.add(forward.clone().multiplyScalar(PLAYER_SPEED));
+                if (keys.s) player.position.add(forward.clone().multiplyScalar(-PLAYER_SPEED));
+                if (keys.a) player.position.add(right.clone().multiplyScalar(PLAYER_SPEED));
+                if (keys.d) player.position.add(right.clone().multiplyScalar(-PLAYER_SPEED));
+                updateMapChunks();
+                pointLight.position.copy(player.position);
+                pointLight.position.y += 2;
+                
+                const config = VIEW_CONFIG[viewMode];
+                player.visible = (viewMode !== 2); 
+                const targetPosition = player.position.clone();
+                targetPosition.y += config.height; 
+                const yaw = player.rotation.y + config.offsetAngle;
+                const pitch = cameraPitch;
+                const horizontalDist = config.dist * Math.cos(pitch);
+                const verticalDist = config.dist * Math.sin(pitch);
+                camera.position.x = targetPosition.x + horizontalDist * Math.sin(yaw);
+                camera.position.y = targetPosition.y + verticalDist;
+                camera.position.z = targetPosition.z + horizontalDist * Math.cos(yaw);
+                camera.lookAt(targetPosition);
+            }
+            if (enemy && player && isGameActive) {
+                enemy.lookAt(player.position);
+                enemy.translateZ(ENEMY_SPEED);
+                if (player.position.distanceTo(enemy.position) < 1.0) {
+                    isGameOver = true;
+                    document.exitPointerLock();
+                    document.getElementById('game-over').style.display = 'block';
+                }
+            }
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
     </script>
 </body>
 </html>
