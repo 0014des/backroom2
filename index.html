@@ -9,7 +9,7 @@
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; z-index: 10; }
         #info { padding: 20px; text-shadow: 1px 1px 2px black; font-size: 14px; color: #ddd; }
         
-        /* クロスヘア: 普段は少し大きく（精度悪い示唆）、構えると小さく */
+        /* クロスヘア */
         #crosshair { 
             position: absolute; top: 50%; left: 50%; 
             width: 20px; height: 20px; 
@@ -25,12 +25,43 @@
             width: 2px; height: 2px; background: red;
             transform: translate(-50%, -50%);
         }
-        /* 構え時: 点に集束 */
         #crosshair.aiming { 
             width: 4px; height: 4px; 
             border-color: rgba(50, 255, 50, 0.8);
             background-color: rgba(50, 255, 50, 0.3);
             box-shadow: 0 0 5px lime;
+        }
+        #crosshair.shotgun {
+            width: 40px; height: 40px;
+            border-style: dashed;
+        }
+        #crosshair.shotgun.aiming {
+            width: 15px; height: 15px;
+        }
+
+        /* レティクル横の弾薬ゲージ */
+        #reticle-ammo {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(25px, -50%); 
+            display: flex;
+            flex-wrap: wrap; 
+            width: 120px;    
+            gap: 3px;
+            align-items: center;
+            pointer-events: none;
+        }
+        
+        .ammo-pip {
+            background-color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 2px black;
+            transition: opacity 0.1s;
+        }
+        
+        .ammo-pip.empty {
+            background-color: transparent;
+            border: 1px solid rgba(100, 100, 100, 0.5);
+            opacity: 0.3;
         }
         
         #menu-screen {
@@ -60,23 +91,47 @@
         #game-over { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 100px; color: #f00; font-weight: bold; text-shadow: 0 0 20px #000; font-family: 'Chiller', 'Courier New', serif; z-index: 200; pointer-events: none; }
         
         #coord-info { display: none; position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; font-size: 16px; background: rgba(0,0,0,0.5); padding: 5px; pointer-events: none; }
-        #hitbox-status { display: none; position: absolute; bottom: 80px; left: 10px; color: lime; font-family: monospace; font-size: 12px; pointer-events: none; }
+        #hitbox-status { display: none; position: absolute; bottom: 100px; left: 10px; color: lime; font-family: monospace; font-size: 12px; pointer-events: none; }
 
-        #hotbar-container { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; background-color: rgba(0, 0, 0, 0.4); padding: 4px; border-radius: 4px; pointer-events: none; }
-        .slot { width: 50px; height: 50px; border: 2px solid #888; background-color: rgba(50, 50, 50, 0.6); display: flex; align-items: center; justify-content: center; font-size: 10px; color: white; font-weight: bold; position: relative; }
-        .slot.active { border-color: white; background-color: rgba(100, 100, 100, 0.8); transform: scale(1.1); box-shadow: 0 0 10px rgba(255,255,255,0.5); }
-        .slot span { position: absolute; bottom: 2px; right: 4px; }
-        .slot-img { font-size: 20px; } 
+        /* ホットバー (1.5倍) */
+        #hotbar-container { 
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); 
+            display: flex; gap: 6px; 
+            background-color: rgba(0, 0, 0, 0.4); padding: 6px; border-radius: 6px; 
+            pointer-events: none; 
+        }
+        .slot { 
+            width: 75px; height: 75px; 
+            border: 3px solid #888; 
+            background-color: rgba(50, 50, 50, 0.6); 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 14px; color: white; font-weight: bold; 
+            position: relative; 
+        }
+        .slot.active { 
+            border-color: white; 
+            background-color: rgba(100, 100, 100, 0.8); 
+            transform: scale(1.1); 
+            box-shadow: 0 0 15px rgba(255,255,255,0.5); 
+        }
+        .slot span { position: absolute; bottom: 4px; right: 6px; }
+        .slot-icon { 
+            width: 60px; height: 60px; 
+            object-fit: contain; 
+            pointer-events: none;
+            filter: drop-shadow(2px 2px 2px black);
+        }
 
         /* 弾薬UI */
         #ammo-display {
-            position: absolute; bottom: 20px; right: 20px;
-            font-size: 40px; font-weight: bold; color: #ddd;
-            text-shadow: 2px 2px 0 #000;
+            position: absolute; bottom: 30px; right: 30px;
+            font-size: 60px; 
+            font-weight: bold; color: #fff;
+            text-shadow: 3px 3px 0 #000;
             font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
             display: none; 
         }
-        #ammo-display span { font-size: 20px; color: #888; }
+        #ammo-display span { font-size: 30px; color: #aaa; }
         #ammo-display.reloading { color: #f55; animation: blink 0.2s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
     </style>
@@ -96,8 +151,9 @@
         <div class="view-select-container">
             <div class="view-label">- SELECT VIEWPOINT -</div>
             <div class="view-buttons">
-                <button class="btn-view" data-mode="2">1ST PERSON</button>
-                <button class="btn-view active" data-mode="0">3RD PERSON (REAR)</button>
+                <!-- 初期状態で 1ST PERSON をアクティブに -->
+                <button class="btn-view active" data-mode="2">1ST PERSON</button>
+                <button class="btn-view" data-mode="0">3RD PERSON (REAR)</button>
                 <button class="btn-view" data-mode="1">3RD PERSON (FRONT)</button>
             </div>
         </div>
@@ -118,15 +174,15 @@
     <div id="ui-layer">
         <div id="info" style="text-align: right; width: auto; right: 10px; left: auto;">
             Status: <span id="status">Loading Models...</span><br>
-            Mode: <span id="view-mode-text">TPS (Rear)</span><br>
+            Mode: <span id="view-mode-text">FPS</span><br>
             <span id="battle-log" style="color:red; font-weight:bold;"></span>
         </div>
         <div id="hitbox-status">[Hitboxes: ON]</div>
 
         <div id="hotbar-container">
-            <div class="slot" id="slot-0"><div class="slot-img">✋</div><span>1</span></div>
-            <div class="slot active" id="slot-1"><div class="slot-img">🔫</div><span>2</span></div>
-            <div class="slot" id="slot-2"><span>3</span></div>
+            <div class="slot" id="slot-0"><div class="slot-img"><img src="photo/Melee_Damage.png" class="slot-icon"></div><span>1</span></div>
+            <div class="slot active" id="slot-1"><div class="slot-img"><img src="photo/unnamed.png" class="slot-icon"></div><span>2</span></div>
+            <div class="slot" id="slot-2"><div class="slot-img"><img src="photo/unnamed (1).png" class="slot-icon"></div><span>3</span></div>
             <div class="slot" id="slot-3"><span>4</span></div>
             <div class="slot" id="slot-4"><span>5</span></div>
         </div>
@@ -134,6 +190,9 @@
         <div id="ammo-display">30 <span>/ 30</span></div>
     </div>
     <div id="crosshair"></div>
+    
+    <div id="reticle-ammo"></div>
+
     <div id="game-over">CAUGHT</div>
 
     <script type="module">
@@ -145,18 +204,13 @@
         const ENEMY_SPEED = 0.055;
         const MOUSE_SENSITIVITY = 0.002;
         const CHUNK_SIZE = 41.0; 
-        const GUN_SCALE = 0.0012; 
-        const MAX_AMMO = 30;
         
-        // ★ 自動連射速度: 3発/秒 (1000ms / 3 = 333ms)
-        const AUTO_FIRE_RATE = 333; 
-        
-        // ジャンプ・物理設定
+        // 物理設定
         const GRAVITY = 20.0;
         const JUMP_FORCE = 8.0;
         const CROUCH_HEIGHT_OFFSET = 0.8;
 
-        let viewMode = 0; 
+        let viewMode = 2; 
         const VIEW_CONFIG = [
             { name: "TPS (Rear)",  dist: 1.9, height: 1.8, offsetAngle: Math.PI },
             { name: "TPS (Front)", dist: 2.5, height: 1.8, offsetAngle: 0 },
@@ -166,27 +220,51 @@
         let isGameActive = false;
         let hasGameStarted = false;
         let isGameOver = false;
-        let currentSlot = 1; 
+        let currentSlot = 1; // 初期装備: M16
         const TOTAL_SLOTS = 5;
 
-        // 銃の座標
-        const tpsGunOffset = new THREE.Vector3(0.08, -0.00, 0.40);
-        const tpsGunRotation = new THREE.Euler(3.07, -2.50, 0.00);
-        const fpsGunPosHip = new THREE.Vector3(0.25, -0.3, -0.6);
-        const fpsGunRotHip = new THREE.Euler(0, Math.PI + 0.05, 0);
-        const fpsGunPosAds = new THREE.Vector3(0.0, -0.19, -0.5); 
-        const fpsGunRotAds = new THREE.Euler(0, Math.PI, 0);
+        // --- 武器データ ---
+        const WEAPON_DATA = {
+            1: { // M16
+                name: "M16",
+                maxAmmo: 30,
+                scale: 0.0012,
+                rate: 333,
+                pellets: 1,
+                spreadHip: 0.08,
+                spreadAds: 0.001,
+                tpsPos: new THREE.Vector3(0.08, -0.00, 0.40),
+                tpsRot: new THREE.Euler(3.07, -2.50, 0.00),
+                fpsPosHip: new THREE.Vector3(0.25, -0.3, -0.6),
+                fpsRotHip: new THREE.Euler(0, Math.PI + 0.05, 0),
+                fpsPosAds: new THREE.Vector3(0.0, -0.19, -0.5),
+                fpsRotAds: new THREE.Euler(0, Math.PI, 0),
+                shootSound: 'sounds/拳銃を撃つ.mp3'
+            },
+            2: { // Shotgun
+                name: "Shotgun",
+                maxAmmo: 5,
+                scale: 0.0012, 
+                rate: 1000, 
+                pellets: 6,
+                spreadHip: 0.15,
+                spreadAds: 0.05,
+                tpsPos: new THREE.Vector3(0.08, -0.00, 0.40),
+                tpsRot: new THREE.Euler(0, -2.50, Math.PI), 
+                fpsPosHip: new THREE.Vector3(0.2, -0.3, -0.6),
+                fpsRotHip: new THREE.Euler(Math.PI, Math.PI + 0.05, Math.PI),
+                fpsPosAds: new THREE.Vector3(0.0, -0.2, -0.5),
+                fpsRotAds: new THREE.Euler(Math.PI, Math.PI, Math.PI),
+                shootSound: 'sounds/ショットガン発射.mp3'
+            }
+        };
 
-        let currentGunPos = new THREE.Vector3();
-        let currentGunRot = new THREE.Euler();
+        let ammoStock = { 1: 30, 2: 5 };
 
-        // プレイヤー物理変数
         let playerVelocityY = 0;
         let isGrounded = false;
 
-        // 戦闘用変数
         let enemyHealth = 5; 
-        let currentAmmo = MAX_AMMO;
         let isReloading = false;
         let isAiming = false;
         let isTriggerHeld = false; 
@@ -206,6 +284,7 @@
         const slots = document.querySelectorAll('.slot');
         const battleLog = document.getElementById('battle-log');
         const ammoDisplay = document.getElementById('ammo-display');
+        const reticleAmmo = document.getElementById('reticle-ammo');
 
         const scene = new THREE.Scene();
         scene.fog = new THREE.FogExp2(0x1a1a0d, 0.05);
@@ -214,15 +293,79 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
+        
+        // --- ★ オーディオ設定 ---
+        const listener = new THREE.AudioListener();
+        camera.add(listener);
+
+        // BGM: BGM.mp3
+        const bgmSound = new THREE.Audio(listener);
+        const audioLoader = new THREE.AudioLoader();
+        audioLoader.load('sounds/BGM.mp3', function(buffer) {
+            bgmSound.setBuffer(buffer);
+            bgmSound.setLoop(true);
+            bgmSound.setLoopStart(0.03);
+            bgmSound.offset = 0.03;
+            // ★ BGM音量: 20%
+            bgmSound.setVolume(0.2); 
+        });
+
+        // プレイヤー足音
+        const playerStepSound = new THREE.Audio(listener);
+        let playerStepBuffer = null;
+        audioLoader.load('sounds/砂利の上を歩く走る.mp3', function(buffer) {
+            playerStepBuffer = buffer;
+            playerStepSound.setBuffer(buffer);
+            playerStepSound.setLoop(true); 
+            // ★ 足音音量: 1.5倍に
+            playerStepSound.setVolume(1.5);
+        });
+
+        // 敵足音
+        const enemyStepSound = new THREE.PositionalAudio(listener);
+        audioLoader.load('sounds/馬が走る2.mp3', function(buffer) {
+            enemyStepSound.setBuffer(buffer);
+            enemyStepSound.setRefDistance(5); 
+            enemyStepSound.setLoop(true);
+            enemyStepSound.setVolume(1.0);
+        });
+
+        // 武器発射音プール
+        const shotSoundPool = [];
+        for(let i=0; i<5; i++) {
+            shotSoundPool.push(new THREE.Audio(listener));
+        }
+        let shotSoundIndex = 0;
+
+        function playShotSound(path) {
+            const sound = shotSoundPool[shotSoundIndex];
+            shotSoundIndex = (shotSoundIndex + 1) % shotSoundPool.length;
+            
+            if (sound.isPlaying) sound.stop();
+            
+            audioLoader.load(path, function(buffer) {
+                sound.setBuffer(buffer);
+                // ★ 銃撃音量: 75%
+                sound.setVolume(0.75);
+                sound.play();
+            });
+        }
+
         const ambientLight = new THREE.AmbientLight(0xffddaa, 0.4);
         scene.add(ambientLight);
         const pointLight = new THREE.PointLight(0xffffff, 1, 15);
         scene.add(pointLight);
 
         let player, enemy;
-        let m16 = null; 
-        let gunPivot = null; 
+        
+        let m16Model = null;
+        let sgModel = null; 
+        let currentWeaponPivot = null; 
+        let m16Pivot = new THREE.Group();
+        let sgPivot = new THREE.Group();
+
         let m16BoxHelper = null; 
+        let sgBoxHelper = null;
         let ammoMesh = null;
         let mixerPlayer, mixerEnemy;
         let mapTemplate = null;
@@ -237,7 +380,6 @@
         const keys = { w: false, a: false, s: false, d: false, f3: false, ctrl: false, space: false, shift: false }; 
         let cameraPitch = 0.0;
         
-        // UI Events
         viewButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 viewButtons.forEach(b => b.classList.remove('active'));
@@ -248,7 +390,19 @@
             });
         });
 
-        function requestGameLock() { document.body.requestPointerLock(); }
+        function requestGameLock() { 
+            document.body.requestPointerLock();
+            
+            // ★ ブラウザの自動再生ポリシー対策
+            if (listener.context.state === 'suspended') {
+                listener.context.resume();
+            }
+
+            // BGMが準備できていれば再生
+            if (bgmSound.buffer && !bgmSound.isPlaying) bgmSound.play();
+            
+            if (enemy && !enemyStepSound.isPlaying && enemy.visible) enemyStepSound.play();
+        }
         btnStart.addEventListener('click', requestGameLock);
         btnResume.addEventListener('click', requestGameLock);
         btnReset.addEventListener('click', () => { resetGame(); requestGameLock(); });
@@ -260,22 +414,39 @@
             statusText.style.color = "#ddd";
             battleLog.innerText = "";
             enemyHealth = 5; 
-            currentAmmo = MAX_AMMO;
+            
+            ammoStock[1] = WEAPON_DATA[1].maxAmmo;
+            ammoStock[2] = WEAPON_DATA[2].maxAmmo;
+            
             isReloading = false;
             isAiming = false;
             isTriggerHeld = false;
-            playerVelocityY = 0; // 重力リセット
+            playerVelocityY = 0;
+            currentSlot = 1; 
+            
             updateAmmoUI();
+            updateHotbarUI();
+            attachWeapon(); 
 
             if (player) { player.position.set(0, 0, 0); player.rotation.set(0, 0, 0); }
-            if (enemy) { enemy.position.set(0, 0, 15); enemy.visible = true; }
+            if (enemy) { 
+                enemy.position.set(0, 0, 15); 
+                enemy.visible = true; 
+                if(!enemyStepSound.isPlaying) enemyStepSound.play();
+            }
             cameraPitch = 0;
-            currentSlot = 1; updateHotbarUI(); attachWeapon(); 
+            
             Object.values(loadedChunks).forEach(chunk => {
                 if (chunk.userData.debugHelper) scene.remove(chunk.userData.debugHelper);
                 scene.remove(chunk);
             });
             for (const key in loadedChunks) delete loadedChunks[key];
+
+            // ★ BGMリセット
+            if (bgmSound.buffer) {
+                if (bgmSound.isPlaying) bgmSound.stop();
+                bgmSound.play();
+            }
         }
 
         document.addEventListener('pointerlockchange', () => {
@@ -285,6 +456,11 @@
                 menuScreen.style.opacity = '0';
                 setTimeout(() => { if(isGameActive) menuScreen.style.display = 'none'; }, 300);
                 crosshair.style.display = 'block';
+                
+                if (listener.context.state === 'suspended') listener.context.resume();
+                if(bgmSound.buffer && !bgmSound.isPlaying) bgmSound.play();
+                
+                if(enemy && enemy.visible && !enemyStepSound.isPlaying) enemyStepSound.play();
             } else {
                 isGameActive = false;
                 menuScreen.style.display = 'flex';
@@ -295,6 +471,11 @@
                 } else {
                     btnStart.classList.remove('hidden'); btnResume.classList.add('hidden'); btnReset.classList.add('hidden');
                 }
+                
+                // ★ 足音は停止する（PauseではなくStop）
+                if(playerStepSound.isPlaying) playerStepSound.stop();
+                if(enemyStepSound.isPlaying) enemyStepSound.pause();
+                // BGMは鳴らし続ける
             }
         });
 
@@ -308,7 +489,11 @@
 
         document.body.addEventListener('mousedown', (event) => {
             if (!isGameActive || isGameOver) return;
-            if (event.button === 0 && currentSlot === 1) {
+            
+            // ★ クリック時にも念のためResumeを入れる
+            if (listener.context.state === 'suspended') listener.context.resume();
+
+            if (event.button === 0 && (currentSlot === 1 || currentSlot === 2)) {
                 isTriggerHeld = true;
                 shootWeapon(); 
             }
@@ -329,52 +514,68 @@
 
         function shootWeapon() {
             if (isReloading) return;
-            if (currentAmmo <= 0) {
+            
+            const weapon = WEAPON_DATA[currentSlot];
+            if (!weapon) return;
+
+            if (ammoStock[currentSlot] <= 0) {
                 reloadWeapon();
                 return;
             }
 
-            currentAmmo--;
+            const now = performance.now();
+            if (now - lastShotTime < weapon.rate * 0.5 && !isTriggerHeld) return; 
+
+            playShotSound(weapon.shootSound);
+
+            ammoStock[currentSlot]--;
             updateAmmoUI();
-            lastShotTime = performance.now(); 
+            lastShotTime = now; 
 
-            // 腰だめ精度計算
-            const spread = isAiming ? 0.001 : 0.05; 
-            const xOffset = (Math.random() - 0.5) * spread;
-            const yOffset = (Math.random() - 0.5) * spread;
+            const spreadBase = isAiming ? weapon.spreadAds : weapon.spreadHip;
+            
+            for (let i = 0; i < weapon.pellets; i++) {
+                const xOffset = (Math.random() - 0.5) * spreadBase;
+                const yOffset = (Math.random() - 0.5) * spreadBase;
 
-            raycaster.setFromCamera(new THREE.Vector2(xOffset, yOffset), camera);
-            const intersects = raycaster.intersectObjects(enemy && enemy.visible ? [enemy] : [], true);
-            let endPoint;
+                raycaster.setFromCamera(new THREE.Vector2(xOffset, yOffset), camera);
+                const intersects = raycaster.intersectObjects(enemy && enemy.visible ? [enemy] : [], true);
+                let endPoint;
 
-            if (intersects.length > 0) {
-                const hit = intersects[0];
-                endPoint = hit.point;
-                enemyHealth--;
-                battleLog.innerText = `Enemy Hit! HP: ${enemyHealth}`;
-                const pushDir = hit.point.clone().sub(camera.position).normalize();
-                enemy.position.add(pushDir.multiplyScalar(0.5));
-                if (enemyHealth <= 0) {
-                    enemy.visible = false;
-                    battleLog.innerText = "Target Eliminated.";
-                    if (enemyBoxHelper) enemyBoxHelper.visible = false;
+                if (intersects.length > 0) {
+                    const hit = intersects[0];
+                    endPoint = hit.point;
+                    
+                    enemyHealth--;
+                    battleLog.innerText = `Enemy Hit! HP: ${enemyHealth}`;
+                    
+                    if (enemyHealth <= 0) {
+                        enemy.visible = false;
+                        battleLog.innerText = "Target Eliminated.";
+                        if (enemyBoxHelper) enemyBoxHelper.visible = false;
+                        if(enemyStepSound.isPlaying) enemyStepSound.stop();
+                    }
+                } else {
+                    endPoint = raycaster.ray.at(100); 
                 }
-            } else {
-                endPoint = raycaster.ray.at(100); 
-            }
 
-            const startPoint = gunPivot ? gunPivot.getWorldPosition(new THREE.Vector3()) : player.position;
-            startPoint.y += 0.1; 
-            const material = new THREE.LineBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.8 });
-            const points = [startPoint, endPoint];
-            const geometry = new THREE.BufferGeometry().setFromPoints(points);
-            const line = new THREE.Line(geometry, material);
-            scene.add(line);
-            setTimeout(() => { scene.remove(line); geometry.dispose(); material.dispose(); }, 50);
+                const pivot = (currentSlot === 1) ? m16Pivot : sgPivot;
+                const startPoint = pivot.getWorldPosition(new THREE.Vector3());
+                startPoint.y += 0.05; 
+                
+                const material = new THREE.LineBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.6 });
+                const points = [startPoint, endPoint];
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(geometry, material);
+                scene.add(line);
+                setTimeout(() => { scene.remove(line); geometry.dispose(); material.dispose(); }, 50);
+            }
         }
 
         function reloadWeapon() {
-            if (isReloading || currentAmmo === MAX_AMMO || currentSlot !== 1) return;
+            const weapon = WEAPON_DATA[currentSlot];
+            if (!weapon) return;
+            if (isReloading || ammoStock[currentSlot] === weapon.maxAmmo) return;
             
             isReloading = true;
             isTriggerHeld = false; 
@@ -382,16 +583,51 @@
             ammoDisplay.classList.add('reloading');
 
             setTimeout(() => {
-                currentAmmo = MAX_AMMO;
+                ammoStock[currentSlot] = weapon.maxAmmo;
                 isReloading = false;
                 battleLog.innerText = "";
                 ammoDisplay.classList.remove('reloading');
                 updateAmmoUI();
+                attachWeapon(); 
             }, 2000);
         }
 
+        // --- ★ 弾薬UI更新 (四角いゲージ) ---
         function updateAmmoUI() {
-            ammoDisplay.innerHTML = `${currentAmmo} <span>/ ${MAX_AMMO}</span>`;
+            const weapon = WEAPON_DATA[currentSlot];
+            
+            // 1. テキスト表示
+            if (weapon) {
+                ammoDisplay.style.display = 'block';
+                ammoDisplay.innerHTML = `${ammoStock[currentSlot]} <span>/ ${weapon.maxAmmo}</span>`;
+            } else {
+                ammoDisplay.style.display = 'none';
+            }
+
+            // 2. 視覚ゲージ (四角を並べる)
+            reticleAmmo.innerHTML = ''; // クリア
+            if (weapon) {
+                const current = ammoStock[currentSlot];
+                const max = weapon.maxAmmo;
+                
+                for (let i = 0; i < max; i++) {
+                    const pip = document.createElement('div');
+                    pip.classList.add('ammo-pip');
+                    
+                    // スタイル調整 (M16は小さく、SGは大きく)
+                    if (max > 10) { // M16
+                        pip.style.width = '6px'; pip.style.height = '6px';
+                    } else { // SG
+                        pip.style.width = '12px'; pip.style.height = '12px';
+                    }
+
+                    // 撃った分は透明枠に
+                    if (i >= current) {
+                        pip.classList.add('empty');
+                    }
+                    reticleAmmo.appendChild(pip);
+                }
+            }
         }
 
         window.addEventListener('keydown', (e) => {
@@ -411,8 +647,6 @@
             
             if (e.key.toLowerCase() === 'r') reloadWeapon();
             if (e.key === 'Control') keys['ctrl'] = true; 
-            
-            // SpaceとShift
             if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); keys['space'] = true; }
             if (e.key === 'Shift') keys['shift'] = true;
 
@@ -449,73 +683,70 @@
                 if (index === currentSlot) slot.classList.add('active');
                 else slot.classList.remove('active');
             });
+            if (currentSlot === 2) crosshair.classList.add('shotgun');
+            else crosshair.classList.remove('shotgun');
         }
 
         function attachWeapon() {
-            if (!player || !gunPivot) return;
-            gunPivot.removeFromParent();
+            if (!player) return;
+            
+            m16Pivot.removeFromParent(); m16Pivot.visible = false;
+            sgPivot.removeFromParent(); sgPivot.visible = false;
+            if(m16BoxHelper) m16BoxHelper.visible = false;
+            if(sgBoxHelper) sgBoxHelper.visible = false;
 
-            if (currentSlot === 1) {
-                gunPivot.visible = true;
-                ammoDisplay.style.display = 'block';
+            const weapon = WEAPON_DATA[currentSlot];
+            
+            if (weapon) {
+                currentWeaponPivot = (currentSlot === 1) ? m16Pivot : sgPivot;
+                currentWeaponPivot.visible = true;
                 
+                currentWeaponPivot.scale.set(weapon.scale, weapon.scale, weapon.scale);
+
                 if (viewMode === 2) { 
-                    camera.add(gunPivot);
-                    currentGunPos.copy(fpsGunPosHip);
-                    currentGunRot.copy(fpsGunRotHip);
-                    gunPivot.position.copy(currentGunPos);
-                    gunPivot.rotation.copy(currentGunRot);
-                    gunPivot.scale.set(GUN_SCALE, GUN_SCALE, GUN_SCALE);
+                    camera.add(currentWeaponPivot);
+                    currentWeaponPivot.position.copy(weapon.fpsPosHip);
+                    currentWeaponPivot.rotation.copy(weapon.fpsRotHip);
                 } else {
                     let handBone = null;
                     player.traverse(c => { if (c.isBone && c.name.includes('RightHand')) handBone = c; });
                     if (handBone) {
-                        handBone.add(gunPivot);
-                        gunPivot.position.copy(tpsGunOffset); 
-                        gunPivot.rotation.copy(tpsGunRotation); 
-                        gunPivot.scale.set(GUN_SCALE, GUN_SCALE, GUN_SCALE);
+                        handBone.add(currentWeaponPivot);
+                        currentWeaponPivot.position.copy(weapon.tpsPos); 
+                        currentWeaponPivot.rotation.copy(weapon.tpsRot); 
                     } else {
-                        player.add(gunPivot);
-                        gunPivot.position.set(0.3, 1.2, 0.5);
+                        player.add(currentWeaponPivot);
+                        currentWeaponPivot.position.set(0.3, 1.2, 0.5);
                     }
                 }
+                
                 if(showHitboxes) {
-                    if(m16BoxHelper) scene.remove(m16BoxHelper);
-                    m16BoxHelper = new THREE.BoxHelper(gunPivot, 0x0000ff);
-                    scene.add(m16BoxHelper);
+                    if (currentSlot === 1 && m16BoxHelper) m16BoxHelper.visible = true;
+                    if (currentSlot === 2 && sgBoxHelper) sgBoxHelper.visible = true;
                 }
+                updateAmmoUI();
             } else {
-                gunPivot.visible = false;
-                ammoDisplay.style.display = 'none';
-                if(m16BoxHelper) { scene.remove(m16BoxHelper); m16BoxHelper = null; }
+                currentWeaponPivot = null;
+                updateAmmoUI();
             }
         }
 
         function toggleHitboxes() {
             showHitboxes = !showHitboxes;
             hitboxStatus.style.display = showHitboxes ? 'block' : 'none';
-            if (showHitboxes) {
-                if (player) scene.add(playerBoxHelper = new THREE.BoxHelper(player, 0xffff00));
-                if (enemy && enemy.visible) scene.add(enemyBoxHelper = new THREE.BoxHelper(enemy, 0xff0000));
-                if (gunPivot && gunPivot.visible) {
-                    if(m16BoxHelper) scene.remove(m16BoxHelper);
-                    m16BoxHelper = new THREE.BoxHelper(gunPivot, 0x0000ff);
-                    scene.add(m16BoxHelper);
-                }
-                for (const key in loadedChunks) {
-                    const chunk = loadedChunks[key];
-                    if (!chunk.userData.debugHelper) {
-                        const h = new THREE.BoxHelper(chunk, 0x00ff00);
-                        scene.add(h); chunk.userData.debugHelper = h;
-                    }
-                }
-            } else {
-                if (playerBoxHelper) { scene.remove(playerBoxHelper); playerBoxHelper = null; }
-                if (enemyBoxHelper) { scene.remove(enemyBoxHelper); enemyBoxHelper = null; }
-                if (m16BoxHelper) { scene.remove(m16BoxHelper); m16BoxHelper = null; }
-                for (const key in loadedChunks) {
-                    const chunk = loadedChunks[key];
-                    if (chunk.userData.debugHelper) { scene.remove(chunk.userData.debugHelper); chunk.userData.debugHelper = null; }
+            
+            if (playerBoxHelper) playerBoxHelper.visible = showHitboxes;
+            if (enemyBoxHelper) enemyBoxHelper.visible = showHitboxes;
+            
+            if (m16BoxHelper) m16BoxHelper.visible = (showHitboxes && currentSlot === 1);
+            if (sgBoxHelper) sgBoxHelper.visible = (showHitboxes && currentSlot === 2);
+
+            for (const key in loadedChunks) {
+                const chunk = loadedChunks[key];
+                if (chunk.userData.debugHelper) chunk.userData.debugHelper.visible = showHitboxes;
+                else if (showHitboxes) {
+                    const h = new THREE.BoxHelper(chunk, 0x00ff00);
+                    scene.add(h); chunk.userData.debugHelper = h;
                 }
             }
         }
@@ -542,9 +773,13 @@
             } else {
                 fixTPose(player);
             }
-            if (showHitboxes) scene.add(playerBoxHelper = new THREE.BoxHelper(player, 0xffff00));
+            playerBoxHelper = new THREE.BoxHelper(player, 0xffff00);
+            playerBoxHelper.visible = false;
+            scene.add(playerBoxHelper);
+            
             scene.add(player);
-            if(gunPivot) attachWeapon();
+            
+            if(m16Model && sgModel) attachWeapon();
             checkLoadComplete();
         });
 
@@ -557,30 +792,51 @@
                 mixerEnemy = new THREE.AnimationMixer(enemy);
                 mixerEnemy.clipAction(gltf.animations[0]).play();
             }
-            if (showHitboxes) scene.add(enemyBoxHelper = new THREE.BoxHelper(enemy, 0xff0000));
+            enemyBoxHelper = new THREE.BoxHelper(enemy, 0xff0000);
+            enemyBoxHelper.visible = false;
+            scene.add(enemyBoxHelper);
             scene.add(enemy);
             checkLoadComplete();
         });
 
+        // M16
         loader.load('3Dmodel/m16_assault_rifle.glb', (gltf) => {
-            console.log("M16 Loaded");
-            m16 = gltf.scene;
-            m16.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+            m16Model = gltf.scene;
+            m16Model.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
             
-            const box = new THREE.Box3().setFromObject(m16);
+            const box = new THREE.Box3().setFromObject(m16Model);
             const center = box.getCenter(new THREE.Vector3());
-            m16.position.sub(center); 
+            m16Model.position.sub(center); 
             
-            gunPivot = new THREE.Group();
-            gunPivot.add(m16);
-            gunPivot.visible = false;
+            m16Pivot.add(m16Model);
+            m16Pivot.visible = false;
             
-            if(player) attachWeapon();
-        }, undefined, (error) => {
-            console.error(error);
-            statusText.innerText = "Error: M16 File Not Found";
-            statusText.style.color = "red";
-        });
+            m16BoxHelper = new THREE.BoxHelper(m16Pivot, 0x0000ff);
+            m16BoxHelper.visible = false;
+            scene.add(m16BoxHelper);
+
+            if(player && sgModel) attachWeapon();
+        }, undefined, (e)=>{ console.error(e); statusText.innerText = "Error: M16 Not Found"; statusText.style.color="red"; });
+
+        // Shotgun
+        loader.load('3Dmodel/simple_old_shotgun.glb', (gltf) => {
+            console.log("Shotgun Loaded");
+            sgModel = gltf.scene;
+            sgModel.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+            
+            const box = new THREE.Box3().setFromObject(sgModel);
+            const center = box.getCenter(new THREE.Vector3());
+            sgModel.position.sub(center); 
+            
+            sgPivot.add(sgModel);
+            sgPivot.visible = false;
+
+            sgBoxHelper = new THREE.BoxHelper(sgPivot, 0x0000ff);
+            sgBoxHelper.visible = false;
+            scene.add(sgBoxHelper);
+
+            if(player && m16Model) attachWeapon();
+        }, undefined, (e)=>{ console.error(e); statusText.innerText = "Error: Shotgun Not Found"; statusText.style.color="red"; });
 
         loader.load('3Dmodel/5.56x45mm_mk262_ammunition_round.glb', (gltf) => {
             ammoMesh = gltf.scene;
@@ -633,8 +889,9 @@
             const currentTime = performance.now();
             const delta = clock.getDelta();
             
-            if (isTriggerHeld && currentSlot === 1 && !isReloading && !isGameOver && isGameActive) {
-                if (currentTime - lastShotTime >= AUTO_FIRE_RATE) {
+            const weapon = WEAPON_DATA[currentSlot];
+            if (isTriggerHeld && weapon && !isReloading && !isGameOver && isGameActive) {
+                if (currentTime - lastShotTime >= weapon.rate) {
                     shootWeapon();
                 }
             }
@@ -644,16 +901,19 @@
             
             if (playerBoxHelper) playerBoxHelper.update();
             if (enemyBoxHelper && enemy && enemy.visible) enemyBoxHelper.update();
-            if (m16BoxHelper && gunPivot && gunPivot.visible) m16BoxHelper.update();
+            if (m16BoxHelper) m16BoxHelper.update();
+            if (sgBoxHelper) sgBoxHelper.update();
 
             // ADSアニメーション
-            if (gunPivot && gunPivot.visible && viewMode === 2) {
-                const targetPos = isAiming && !isReloading ? fpsGunPosAds : fpsGunPosHip;
-                const targetRot = isAiming && !isReloading ? fpsGunRotAds : fpsGunRotHip;
-                gunPivot.position.lerp(targetPos, 0.2);
-                gunPivot.rotation.x += (targetRot.x - gunPivot.rotation.x) * 0.2;
-                gunPivot.rotation.y += (targetRot.y - gunPivot.rotation.y) * 0.2;
-                gunPivot.rotation.z += (targetRot.z - gunPivot.rotation.z) * 0.2;
+            if (currentWeaponPivot && currentWeaponPivot.visible && viewMode === 2) {
+                const weapon = WEAPON_DATA[currentSlot];
+                const targetPos = isAiming && !isReloading ? weapon.fpsPosAds : weapon.fpsPosHip;
+                const targetRot = isAiming && !isReloading ? weapon.fpsRotAds : weapon.fpsRotHip;
+                
+                currentWeaponPivot.position.lerp(targetPos, 0.2);
+                currentWeaponPivot.rotation.x += (targetRot.x - currentWeaponPivot.rotation.x) * 0.2;
+                currentWeaponPivot.rotation.y += (targetRot.y - currentWeaponPivot.rotation.y) * 0.2;
+                currentWeaponPivot.rotation.z += (targetRot.z - currentWeaponPivot.rotation.z) * 0.2;
                 
                 const targetFov = isAiming && !isReloading ? 60 : 75;
                 if (Math.abs(camera.fov - targetFov) > 0.1) {
@@ -668,7 +928,7 @@
                 }
             }
 
-            if (isReloading && gunPivot) gunPivot.rotation.x -= 0.1;
+            if (isReloading && currentWeaponPivot) currentWeaponPivot.rotation.x -= 0.1;
 
             if (showCoords && player) {
                 coordInfo.innerText = `XYZ: ${player.position.x.toFixed(2)} / ${player.position.y.toFixed(2)} / ${player.position.z.toFixed(2)}`;
@@ -677,9 +937,9 @@
             if (isGameOver) { renderer.render(scene, camera); return; }
 
             if (player && isGameActive) {
-                // --- 移動・重力・物理計算 ---
                 let speedMultiplier = 1.0;
                 let crouchOffset = 0;
+                let isMoving = false;
 
                 if (keys.shift) {
                     speedMultiplier *= 0.5; 
@@ -695,12 +955,24 @@
                 const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
                 const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
                 
-                if (keys.w) player.position.add(forward.clone().multiplyScalar(currentSpeed));
-                if (keys.s) player.position.add(forward.clone().multiplyScalar(-currentSpeed));
-                if (keys.a) player.position.add(right.clone().multiplyScalar(currentSpeed));
-                if (keys.d) player.position.add(right.clone().multiplyScalar(-currentSpeed));
+                if (keys.w) { player.position.add(forward.clone().multiplyScalar(currentSpeed)); isMoving = true; }
+                if (keys.s) { player.position.add(forward.clone().multiplyScalar(-currentSpeed)); isMoving = true; }
+                if (keys.a) { player.position.add(right.clone().multiplyScalar(currentSpeed)); isMoving = true; }
+                if (keys.d) { player.position.add(right.clone().multiplyScalar(-currentSpeed)); isMoving = true; }
 
-                // ジャンプ
+                // ★ プレイヤー足音制御 (Pause -> Stopに変更)
+                if (isMoving && isGrounded && !playerStepSound.isPlaying) {
+                    playerStepSound.play();
+                } else if ((!isMoving || !isGrounded) && playerStepSound.isPlaying) {
+                    playerStepSound.stop(); // 変更
+                }
+                // 再生速度変更
+                if (playerStepSound.isPlaying) {
+                    if (keys.ctrl) playerStepSound.setPlaybackRate(1.5);
+                    else if (keys.shift) playerStepSound.setPlaybackRate(0.8);
+                    else playerStepSound.setPlaybackRate(1.0);
+                }
+
                 if (keys.space && isGrounded) {
                     playerVelocityY = JUMP_FORCE;
                     isGrounded = false;
