@@ -1,3 +1,6 @@
+Please play this game site!
+https://0014des.github.io/backroom2/
+
 ## 1. 中核となる技術・ライブラリ
 
 ### Three.js（WebGL）
