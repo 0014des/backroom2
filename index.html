@@ -2,36 +2,42 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Backrooms Escape - No Shortcuts</title>
+    <title>Backrooms Escape - Commented Version</title>
+    <!-- スマホで表示したときに勝手に拡大縮小されないようにする設定 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <style>
+        /* --- ここは見た目（デザイン）の設定です --- */
         body { margin: 0; overflow: hidden; background-color: #000; color: white; font-family: 'Courier New', Courier, monospace; user-select: none; -webkit-user-select: none; }
         
+        /* UIレイヤー：ゲーム画面の上に文字や画像を重ねるための透明な板 */
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; z-index: 10; }
         #info { padding: 20px; text-shadow: 1px 1px 2px black; font-size: 14px; color: #ddd; }
         
-        /* クロスヘア */
+        /* クロスヘア（画面中央の照準）のデザイン */
         #crosshair { 
             position: absolute; top: 50%; left: 50%; 
             width: 20px; height: 20px; 
             border: 2px solid rgba(200, 50, 50, 0.5);
             border-radius: 50%; 
             transform: translate(-50%, -50%);
-            display: none;
+            display: none; /* ゲーム開始前は隠す */
             box-shadow: 0 0 5px red;
-            transition: all 0.2s ease-out;
+            transition: all 0.2s ease-out; /* なめらかに動く設定 */
         }
+        /* 照準の中心点 */
         #crosshair::after {
             content: ''; position: absolute; top: 50%; left: 50%;
             width: 2px; height: 2px; background: red;
             transform: translate(-50%, -50%);
         }
+        /* 右クリック（エイム）時の照準デザイン */
         #crosshair.aiming { 
             width: 4px; height: 4px; 
             border-color: rgba(50, 255, 50, 0.8);
             background-color: rgba(50, 255, 50, 0.3);
             box-shadow: 0 0 5px lime;
         }
+        /* ショットガン選択時の照準デザイン */
         #crosshair.shotgun {
             width: 40px; height: 40px;
             border-style: dashed;
@@ -40,7 +46,7 @@
             width: 15px; height: 15px;
         }
 
-        /* レティクル真横の弾薬ゲージ */
+        /* 照準の横にある弾薬ゲージ */
         #reticle-ammo {
             position: absolute;
             top: 50%; left: 50%;
@@ -53,19 +59,20 @@
             pointer-events: none;
         }
         
+        /* 弾薬の粒（ピップ） */
         .ammo-pip {
             background-color: rgba(255, 255, 255, 0.9);
             box-shadow: 0 0 2px black;
             transition: opacity 0.1s;
         }
-        
+        /* 撃った後の空の粒 */
         .ammo-pip.empty {
             background-color: transparent;
             border: 1px solid rgba(100, 100, 100, 0.5);
             opacity: 0.3;
         }
         
-        /* メニュー画面 */
+        /* メニュー画面（黒背景の画面） */
         #menu-screen {
             position: absolute; width: 100%; height: 100%;
             background-color: rgba(10, 5, 5, 0.85);
@@ -75,14 +82,15 @@
             text-align: center;
             transition: opacity 0.3s;
             overflow-y: auto; 
+            padding: 20px 0;
         }
 
-        h1 { font-size: 60px; color: #a00; text-shadow: 4px 4px 0px #000, 0 0 20px #f00; letter-spacing: 5px; margin-bottom: 20px; border-bottom: 2px solid #500; padding-bottom: 10px; }
+        h1 { font-size: 50px; color: #a00; text-shadow: 4px 4px 0px #000, 0 0 20px #f00; letter-spacing: 5px; margin-bottom: 20px; border-bottom: 2px solid #500; padding-bottom: 10px; }
         
-        /* メニューのボタングループ */
-        .view-select-container { margin-bottom: 15px; }
+        /* ボタン類のデザイン */
+        .view-select-container { margin-bottom: 15px; width: 90%; max-width: 800px; }
         .view-label { font-size: 16px; color: #aaa; margin-bottom: 8px; letter-spacing: 2px; text-shadow: 1px 1px 0 #000; }
-        .view-buttons { display: flex; gap: 15px; justify-content: center; }
+        .view-buttons { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
         
         .btn-view { background: rgba(0,0,0,0.7); border: 1px solid #444; color: #888; padding: 8px 16px; cursor: pointer; font-family: inherit; font-size: 14px; transition: all 0.2s; }
         .btn-view:hover { border-color: #800; color: #fff; }
@@ -99,7 +107,19 @@
             width: 100%; text-align: center; border-color: #555; color: #ccc; font-size: 14px; padding: 5px;
         }
 
-        /* 操作ガイド */
+        /* 敵選択ボタン用のレイアウト（3列） */
+        .enemy-buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            width: 100%;
+        }
+        .enemy-buttons-grid button {
+            font-size: 12px;
+            padding: 10px 5px;
+        }
+
+        /* 操作ガイドのデザイン */
         .controls-wrapper {
             margin-top: 25px;
             background: rgba(20, 20, 20, 0.8);
@@ -139,7 +159,8 @@
 
         /* ゲームオーバー画面 */
         #game-over-screen {
-            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; /* JSで制御するため初期は非表示 */
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(rgba(0,0,0,0.9), rgba(50,0,0,0.8));
             flex-direction: column; align-items: center; justify-content: center;
             z-index: 2000; pointer-events: auto;
@@ -200,7 +221,7 @@
         #coord-info { display: none; position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; font-size: 16px; background: rgba(0,0,0,0.5); padding: 5px; pointer-events: none; }
         #hitbox-status { display: none; position: absolute; bottom: 140px; left: 10px; color: lime; font-family: monospace; font-size: 12px; pointer-events: none; }
 
-        /* ホットバー */
+        /* ホットバー（武器選択枠） */
         #hotbar-container { 
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); 
             display: flex; gap: 6px; 
@@ -225,7 +246,7 @@
             pointer-events: none; filter: drop-shadow(2px 2px 2px black);
         }
 
-        /* 弾薬UI */
+        /* 弾薬残弾数表示 */
         #ammo-display {
             position: absolute; bottom: 30px; right: 30px;
             font-size: 60px; font-weight: bold; color: #fff;
@@ -237,7 +258,7 @@
         #ammo-display.reloading { color: #f55; animation: blink 0.2s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
 
-        /* HP UI */
+        /* 左下のHP表示 */
         #hp-ui {
             position: absolute; bottom: 110px; left: 30px;
             font-size: 28px; color: #f55; font-weight: bold;
@@ -254,12 +275,14 @@
         }
         #inventory h2 { margin-top: 0; color: #aaa; border-bottom: 1px solid #555; padding-bottom: 5px;}
         
+        /* クリエイティブモード表示 */
         #creative-indicator {
             display: none; position: absolute; top: 60px; right: 20px;
             color: cyan; font-weight: bold; font-family: monospace;
             text-shadow: 0 0 5px cyan;
         }
     </style>
+    <!-- Three.js などのライブラリ読み込み -->
     <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
     <script type="importmap">
         {
@@ -283,6 +306,8 @@
     <!-- メニュー画面 -->
     <div id="menu-screen">
         <h1>THE BACKROOMS</h1>
+        
+        <!-- 視点切り替えボタン -->
         <div class="view-select-container">
             <div class="view-label">- VIEWPOINT -</div>
             <div class="view-buttons">
@@ -292,6 +317,7 @@
             </div>
         </div>
 
+        <!-- 難易度（ゲームモード）選択ボタン -->
         <div class="view-select-container">
             <div class="view-label">- GAME MODE -</div>
             <div class="view-buttons" id="mode-buttons">
@@ -301,12 +327,26 @@
             </div>
         </div>
 
+        <!-- 敵キャラクター選択ボタン一覧 -->
+        <div class="view-select-container">
+            <div class="view-label">- ENEMY SELECT -</div>
+            <div class="view-buttons enemy-buttons-grid">
+                <button class="btn-view active" data-enemy="bacteria">BACTERIA</button>
+                <button class="btn-view" data-enemy="nathan">NATHAN</button>
+                <button class="btn-view" data-enemy="rubeus">RUBEUS</button>
+                <button class="btn-view" data-enemy="orcanos">ORCANOS</button>
+                <button class="btn-view" data-enemy="donchan">DON-CHAN</button>
+                <button class="btn-view" data-enemy="skinstealer">SKIN STEALER</button>
+            </div>
+        </div>
+
         <div class="action-buttons">
             <!-- 反動ボタン -->
             <button id="btn-recoil-menu" class="btn-view btn-option">🔫 RECOIL: ON</button>
             <!-- SOUNDボタン -->
             <button id="btn-sound-menu" class="btn-view btn-option">🔊 SOUND: ON</button>
 
+            <!-- ゲーム開始・再開・リセットボタン -->
             <button id="btn-start" class="btn-main pulse">ENTER THE ROOM</button>
             <button id="btn-resume" class="btn-main hidden">RESUME</button>
             <button id="btn-reset" class="btn-main hidden">RESET GAME</button>
@@ -355,6 +395,7 @@
 
     <div id="coord-info">XYZ: 0.00 / 0.00 / 0.00</div>
 
+    <!-- UIレイヤー（HP、ホットバー、弾薬など） -->
     <div id="ui-layer">
         <div id="info" style="text-align: right; width: auto; right: 10px; left: auto;">
             Status: <span id="status">Loading Models...</span><br>
@@ -381,31 +422,38 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
-        // --- 設定 ---
-        const PLAYER_SPEED = 0.08;
-        const ENEMY_SPEED = 0.055;
-        const MOUSE_SENSITIVITY = 0.002;
-        const CHUNK_SIZE = 41.0; 
-        const GRAVITY = 20.0;
-        const JUMP_FORCE = 8.0;
-        const CROUCH_HEIGHT_OFFSET = 0.8;
-        const MAX_ENEMIES_HARDCORE = 10; 
+        // --- ★ ここから設定項目 (Game Settings) ★ ---
+        const PLAYER_SPEED = 0.08;      // プレイヤーの歩く速度
+        const ENEMY_SPEED = 0.055;      // 敵の追いかけてくる速度
+        const MOUSE_SENSITIVITY = 0.002;// マウス感度
+        const CHUNK_SIZE = 41.0;        // マップ1ブロックの大きさ
+        const GRAVITY = 20.0;           // 重力
+        const JUMP_FORCE = 8.0;         // ジャンプ力
+        const CROUCH_HEIGHT_OFFSET = 0.8; // しゃがんだ時の高さの減る量
+        const MAX_ENEMIES_HARDCORE = 10; // ハードコアモードで湧く敵の最大数
 
-        // --- グローバル変数 ---
+        // --- グローバル変数 (Global Variables) ---
         let playerHP = 100;
         let killCount = 0;
         let startTime = 0;
-        let soundEnabled = true;
-        let recoilEnabled = true; 
-        let recoilBufferPitch = 0; 
-        let recoilBufferYaw = 0;   
+        let soundEnabled = true; // 音のON/OFF
+        let recoilEnabled = true; // 反動のON/OFF
+        let recoilBufferPitch = 0; // 縦方向の反動の溜め
+        let recoilBufferYaw = 0;   // 横方向の反動の溜め
         
         let isPlayerVisible = true;
         let isInventoryOpen = false;
-        let isCreativeMode = false;
+        let isCreativeMode = false; // クリエイティブモードかどうか
 
-        // --- 視点 ---
-        let viewMode = 2; 
+        // ★ 敵キャラ管理用
+        const enemyTypes = ['bacteria', 'nathan', 'rubeus', 'orcanos', 'donchan', 'skinstealer'];
+        let currentEnemyType = 'bacteria'; // 現在選択中の敵タイプ
+        let enemyTemplate = null; // スポーンに使う現在の敵モデル
+        // 各敵モデルを保存しておく場所
+        const enemyAssets = { bacteria: null, nathan: null, rubeus: null, orcanos: null, donchan: null, skinstealer: null };
+
+        // --- 視点設定 (TPS/FPS) ---
+        let viewMode = 2; // 2 = FPS
         const VIEW_CONFIG = [
             { name: "TPS (Rear)",  dist: 1.9, height: 1.8, offsetAngle: Math.PI },
             { name: "TPS (Front)", dist: 2.5, height: 1.8, offsetAngle: 0 },
@@ -413,25 +461,43 @@
         ];
 
         // --- ゲームモード ---
-        let gameMode = 1; 
+        let gameMode = 1; // 0:Peaceful, 1:Normal, 2:Hardcore
 
         let isGameActive = false;
         let hasGameStarted = false;
         let isGameOver = false;
-        let currentSlot = 1; 
+        let currentSlot = 1; // 現在の武器スロット (1=M16, 2=Shotgun)
         const TOTAL_SLOTS = 5;
 
-        // --- 武器データ ---
+        // --- ★ 武器データ (Weapon Data) ★ ---
+        // ここで武器の性能を変更できます
         const WEAPON_DATA = {
             1: { 
-                name: "M16", maxAmmo: 30, scale: 0.0012, rate: 100, pellets: 1, spreadHip: 0.08, spreadAds: 0.001, damage: 1, recoil: 0.03,
+                name: "M16", 
+                maxAmmo: 30,    // 装弾数
+                scale: 0.0012,  // モデルの大きさ
+                rate: 100,      // 連射間隔(ms) 小さいほど速い
+                pellets: 1,     // 一度に発射する弾数
+                spreadHip: 0.08,// 腰撃ち時のバラつき
+                spreadAds: 0.001,// 覗き込み(ADS)時のバラつき
+                damage: 1,      // ダメージ
+                recoil: 0.03,   // 反動の強さ
+                // 以下はモデルの位置合わせ用
                 tpsPos: new THREE.Vector3(0.08, -0.00, 0.40), tpsRot: new THREE.Euler(3.07, -2.50, 0.00),
                 fpsPosHip: new THREE.Vector3(0.25, -0.3, -0.6), fpsRotHip: new THREE.Euler(0, Math.PI + 0.05, 0),
                 fpsPosAds: new THREE.Vector3(0.0, -0.19, -0.5), fpsRotAds: new THREE.Euler(0, Math.PI, 0),
                 shootSound: 'sounds/拳銃を撃つ.mp3'
             },
             2: { 
-                name: "Shotgun", maxAmmo: 5, scale: 0.0012, rate: 1000, pellets: 8, spreadHip: 0.15, spreadAds: 0.05, damage: 2, recoil: 0.04, 
+                name: "Shotgun", 
+                maxAmmo: 5,     // 装弾数
+                scale: 0.0012, 
+                rate: 1000,     // 連射間隔(ms)
+                pellets: 8,     // 散弾の数
+                spreadHip: 0.15, 
+                spreadAds: 0.05, 
+                damage: 2,      // 1発あたりのダメージ
+                recoil: 0.04,   // 反動
                 tpsPos: new THREE.Vector3(0.08, -0.00, 0.40), tpsRot: new THREE.Euler(0, -2.50, Math.PI), 
                 fpsPosHip: new THREE.Vector3(0.2, -0.3, -0.6), fpsRotHip: new THREE.Euler(Math.PI, Math.PI + 0.05, Math.PI),
                 fpsPosAds: new THREE.Vector3(0.0, -0.2, -0.5), fpsRotAds: new THREE.Euler(Math.PI, Math.PI, Math.PI),
@@ -439,7 +505,7 @@
             }
         };
 
-        let ammoStock = { 1: 30, 2: 5 };
+        let ammoStock = { 1: 30, 2: 5 }; // 現在の弾薬数
         let playerVelocityY = 0;
         let isGrounded = false;
         let isReloading = false;
@@ -448,7 +514,7 @@
         let lastShotTime = 0;      
         const raycaster = new THREE.Raycaster(); 
 
-        // DOM
+        // DOM要素の取得
         const menuScreen = document.getElementById('menu-screen');
         const gameOverScreen = document.getElementById('game-over-screen'); 
         const btnStart = document.getElementById('btn-start');
@@ -458,6 +524,7 @@
         const btnBackToMenu = document.getElementById('btn-back-to-menu');
         const btnSoundMenu = document.getElementById('btn-sound-menu'); 
         const btnRecoilMenu = document.getElementById('btn-recoil-menu'); 
+        const enemyButtons = document.querySelectorAll('.enemy-buttons-grid .btn-view'); 
         const viewButtons = document.querySelectorAll('.view-buttons:first-of-type .btn-view'); 
         const modeButtons = document.querySelectorAll('#mode-buttons .btn-view'); 
         const crosshair = document.getElementById('crosshair');
@@ -474,20 +541,20 @@
         const hpText = document.getElementById('hp-text');
         const creativeIndicator = document.getElementById('creative-indicator');
 
-        // Score Elements
         const goKills = document.getElementById('go-kills');
         const goTime = document.getElementById('go-time');
         const goScore = document.getElementById('go-score');
 
+        // Three.js シーンの初期化
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x1a1a0d, 0.05);
+        scene.fog = new THREE.FogExp2(0x1a1a0d, 0.05); // 霧の設定
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1000); 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
         
-        // --- オーディオ ---
+        // --- 音声システムの初期化 ---
         const listener = new THREE.AudioListener();
         camera.add(listener);
 
@@ -534,11 +601,10 @@
         const pointLight = new THREE.PointLight(0xffffff, 1, 15);
         scene.add(pointLight);
 
+        // 各種3Dモデル用変数
         let player;
         let enemies = []; 
         let enemyMixers = [];
-        let enemyTemplate = null; 
-        
         let m16Model = null;
         let sgModel = null; 
         let currentWeaponPivot = null; 
@@ -549,7 +615,6 @@
         let mixerPlayer;
         let mapTemplate = null;
         const loadedChunks = {};
-        
         let playerBoxHelper;
         let showHitboxes = false;
         let showCoords = false;
@@ -559,11 +624,10 @@
         const keys = { w: false, a: false, s: false, d: false, f3: false, ctrl: false, space: false, shift: false }; 
         let cameraPitch = 0.0;
         
-        // --- イベントリスナー ---
+        // --- イベントリスナー設定 ---
         
-        // ブラウザショートカット対策
+        // ブラウザのショートカットキー無効化
         window.addEventListener('keydown', (e) => {
-            // F1～F12, Ctrl+S, Ctrl+P, Ctrl+F, Ctrl+R, Ctrl+G, Tab を無効化
             if (
                 (e.key.startsWith('F') && e.key.length > 1) || 
                 (e.ctrlKey && ['s', 'p', 'f', 'r', 'g', 'h'].includes(e.key.toLowerCase())) ||
@@ -585,6 +649,17 @@
             recoilEnabled = !recoilEnabled;
             btnRecoilMenu.innerText = recoilEnabled ? "🔫 RECOIL: ON" : "🔫 RECOIL: OFF";
         };
+
+        // 敵キャラ選択ボタン (グリッドクリック時)
+        enemyButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                enemyButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentEnemyType = btn.getAttribute('data-enemy');
+                // 選択された敵のテンプレートをセット
+                enemyTemplate = enemyAssets[currentEnemyType];
+            });
+        });
 
         btnTogglePlayer.onclick = () => {
             isPlayerVisible = !isPlayerVisible;
@@ -695,6 +770,9 @@
             
             clearEnemies();
 
+            // 現在選択されている敵キャラをセット
+            enemyTemplate = enemyAssets[currentEnemyType];
+
             if (enemyTemplate) {
                 if (gameMode === 1) spawnEnemy(0, 15);
                 else if (gameMode === 2) spawnEnemy(0, 50);
@@ -725,9 +803,10 @@
         }
 
         function spawnEnemy(x, z) {
-            if (!enemyTemplate) return;
+            const tmpl = enemyAssets[currentEnemyType];
+            if (!tmpl) return;
             
-            const enemy = SkeletonUtils.clone(enemyTemplate.scene);
+            const enemy = SkeletonUtils.clone(tmpl.scene);
             enemy.position.set(x, 0, z);
             
             enemy.traverse((child) => {
@@ -738,9 +817,9 @@
                 }
             });
 
-            if(enemyTemplate.animations && enemyTemplate.animations.length > 0){
+            if(tmpl.animations && tmpl.animations.length > 0){
                 const mixer = new THREE.AnimationMixer(enemy);
-                const action = mixer.clipAction(enemyTemplate.animations[0]);
+                const action = mixer.clipAction(tmpl.animations[0]);
                 action.play();
                 enemyMixers.push(mixer);
                 enemy.userData.mixer = mixer;
@@ -941,6 +1020,7 @@
                 crosshair.classList.remove('aiming');
             }
         });
+        document.addEventListener('contextmenu', event => event.preventDefault());
 
         function shootWeapon() {
             if (isReloading) return;
@@ -1269,9 +1349,49 @@
             const enemy = gltf.scene;
             enemy.scale.set(0.5, 0.5, 0.5); 
             enemy.traverse((child) => { if (child.isMesh) child.material.color.set(0x000000); });
-            enemyTemplate = gltf; 
+            enemyAssets['bacteria'] = gltf; // 保存
+            
+            // 初回セット
+            if(currentEnemyType === 'bacteria') enemyTemplate = gltf;
             checkLoadComplete();
         });
+
+        // Nathanロード
+        loader.load('3Dmodel/nathan.glb', (gltf) => {
+            const enemy = gltf.scene;
+            enemy.scale.set(0.2, 0.2, 0.2); 
+            enemyAssets['nathan'] = gltf; // 保存
+        }, undefined, (err)=>{ console.log("Nathan model not found, skipping."); });
+
+        // Rubeus
+        loader.load('3Dmodel/rubeus_the_mighty_jibanyan.glb', (gltf) => {
+            const enemy = gltf.scene;
+            // ★ 0.6 -> 0.18 に変更
+            enemy.scale.set(0.18, 0.18, 0.18); 
+            enemyAssets['rubeus'] = gltf;
+        }, undefined, (err)=>{ console.log("Rubeus model not found"); });
+
+        // Orcanos
+        loader.load('3Dmodel/orcanos_war_paint.glb', (gltf) => {
+            const enemy = gltf.scene;
+            // ★ 0.66 -> 0.16 に変更
+            enemy.scale.set(0.16, 0.16, 0.16); 
+            enemyAssets['orcanos'] = gltf;
+        }, undefined, (err)=>{ console.log("Orcanos model not found"); });
+
+        // Don-chan
+        loader.load('3Dmodel/don-chan.glb', (gltf) => {
+            const enemy = gltf.scene;
+            enemy.scale.set(0.66, 0.66, 0.66); 
+            enemyAssets['donchan'] = gltf;
+        }, undefined, (err)=>{ console.log("Don-chan model not found"); });
+
+        // Skin Stealer
+        loader.load('3Dmodel/the_backrooms_-_skin_stealer_w_animations.glb', (gltf) => {
+            const enemy = gltf.scene;
+            enemy.scale.set(0.8, 0.8, 0.8); // 仮スケール
+            enemyAssets['skinstealer'] = gltf;
+        }, undefined, (err)=>{ console.log("Skin Stealer model not found"); });
 
         loader.load('3Dmodel/m16_assault_rifle.glb', (gltf) => {
             m16Model = gltf.scene;
@@ -1310,7 +1430,7 @@
         }, undefined, (e)=>{ console.error(e); statusText.innerText = "Error: Shotgun Not Found"; statusText.style.color="red"; });
 
         function checkLoadComplete() {
-            if (player && enemyTemplate) document.getElementById('status').innerText = "Ready to Run";
+            if (player && enemyAssets['bacteria']) document.getElementById('status').innerText = "Ready to Run";
         }
 
         function fixTPose(model) {
